@@ -1,11 +1,11 @@
 import os
 from typing import List, Optional
 from langchain_openai import OpenAIEmbeddings
-from langchain_text_splitters import RecursiveCharacterTextSplitter,Language
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 import psycopg2
 import tiktoken
 from commitary_backend.services.githubService.GithubServiceObject import gb_service
-from commitary_backend.services.insightService.RAGService import rag_service
+from commitary_backend.services.insightService.OLD.RAGService_OLD import rag_service as rag_service_old
 from commitary_backend.dto.insightDTO import DailyInsightDTO, DailyInsightListDTO, InsightItemDTO
 from commitary_backend.dto.gitServiceDTO import CodebaseDTO, CodeFileDTO, CommitListDTO, DiffDTO, RepoDTO
 
@@ -89,98 +89,29 @@ class LoggingOpenAIEmbeddings(OpenAIEmbeddings):
         return super().embed_query(text)
 
 class InsightService():
-    ##25.10.29 수정
+    
     def __init__(self):
         self.embeddings = LoggingOpenAIEmbeddings()
-        
-        # 언어별 스플리터 딕셔너리
-        self.code_splitters = {
-            'python': RecursiveCharacterTextSplitter.from_language(
-                language=Language.PYTHON,
-                chunk_size=1500,
-                chunk_overlap=200
-            ),
-            'javascript': RecursiveCharacterTextSplitter.from_language(
-                language=Language.JS,
-                chunk_size=1500,
-                chunk_overlap=200
-            ),
-            'java': RecursiveCharacterTextSplitter.from_language(
-                language=Language.JAVA,
-                chunk_size=1500,
-                chunk_overlap=200
-            ),
-            'cpp': RecursiveCharacterTextSplitter.from_language(
-                language=Language.CPP,
-                chunk_size=1500,
-                chunk_overlap=200
-            ),
-            'go': RecursiveCharacterTextSplitter.from_language(
-                language=Language.GO,
-                chunk_size=1500,
-                chunk_overlap=200
-            ),
-        }
-        
-        # 기본 텍스트 스플리터 (언어 감지 실패시 사용)
-        self.default_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=1500,
-            chunk_overlap=200,
+        self.text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=1000,
+            chunk_overlap=150,
             length_function=len
         )
-        
+        # Assuming DATABASE_URL is in the environment for PGVector
         self.connection_string = os.getenv("DATABASE_URL")
         self.vector_store = PGVector(
-            connection=self.connection_string,
-            embeddings=self.embeddings,
-            collection_name="codebase_snapshots_NEW"
-        )
-    def _get_language_from_filename(self, filename: str) -> str:
-        """파일 확장자로부터 언어 추론"""
-        extension_map = {
-            '.py': 'python',
-            '.js': 'javascript',
-            '.jsx': 'javascript',
-            '.ts': 'javascript',
-            '.tsx': 'javascript',
-            '.java': 'java',
-            '.cpp': 'cpp',
-            '.cc': 'cpp',
-            '.cxx': 'cpp',
-            '.c': 'cpp',
-            '.h': 'cpp',
-            '.hpp': 'cpp',
-            '.go': 'go',
-        }
-        
-        ext = os.path.splitext(filename)[1].lower()
-        return extension_map.get(ext, 'default')
-    
-    def _embed_and_store_codebase(self, codebase_dto: CodebaseDTO, commitary_id: int, branch: str, repo_id: int, snapshot_week_id: str):
+    connection=self.connection_string,
+    embeddings=self.embeddings,
+    collection_name="codebase_snapshots_OLD"
+)
+    def _embed_and_store_codebase(self, codebase_dto: CodebaseDTO, commitary_id: int, branch: str, repo_id: int,snapshot_week_id:str):
         """
         Chunks, embeds, and stores the codebase snapshot in the vector database.
-        Uses language-specific splitters for better code understanding.
         """
-        current_app.logger.debug(f"embed_and_store_codebase with enhanced chunking")
+        current_app.logger.debug(f"embed_and_store_codebase")
         documents = []
-        
         for file in codebase_dto.files:
-            # 언어 감지
-            language = self._get_language_from_filename(file.filename)
-            current_app.logger.debug(f"Processing file: {file.path}, detected language: {language}")
-            
-            # 적절한 스플리터 선택
-            if language in self.code_splitters:
-                splitter = self.code_splitters[language]
-                current_app.logger.debug(f"Using {language}-specific splitter")
-            else:
-                splitter = self.default_splitter
-                current_app.logger.debug(f"Using default splitter for {file.path}")
-            
-            # 코드 분할
-            chunks = splitter.split_text(file.code_content)
-            current_app.logger.debug(f"Split {file.path} into {len(chunks)} chunks")
-            
+            chunks = self.text_splitter.split_text(file.code_content)
             for i, chunk in enumerate(chunks):
                 doc = Document(
                     page_content=chunk,
@@ -190,16 +121,11 @@ class InsightService():
                         "repo_id": repo_id,
                         "target_branch": branch,
                         "filepath": file.path,
-                        "filename": file.filename,
-                        "language": language,  # 새로운 메타데이터
                         "type": "codebase",
                         "lastModifiedTime": file.last_modified_at.isoformat(),
                         "snapshot_week_id": snapshot_week_id,
                         "chunk_id": f"{repo_id}_{branch}_{file.path}_{i}",
-                        "chunk_index": i,  # 청크 순서 정보
-                        "total_chunks": len(chunks),  # 전체 청크 수
-                        "collection_name": "NEW"
-                        
+                        "collection_name": "OLD"
                     }
                 )
                 documents.append(doc)
@@ -207,15 +133,7 @@ class InsightService():
         if documents:
             current_app.logger.debug(f"Attempting to embed and store {len(documents)} document chunks for codebase snapshot.")
             
-            # 언어별 통계 출력
-            language_stats = {}
-            for doc in documents:
-                lang = doc.metadata.get('language', 'unknown')
-                language_stats[lang] = language_stats.get(lang, 0) + 1
-            
-            current_app.logger.debug(f"Language distribution: {language_stats}")
-            
-            # Process documents in batches
+            # Process documents in batches to avoid timeouts and memory issues.
             batch_size = 16
             with get_openai_callback() as cb:
                 for i in range(0, len(documents), batch_size):
@@ -274,7 +192,7 @@ class InsightService():
                     AND cmetadata->>'target_branch' = %s
                     AND cmetadata->>'snapshot_week_id' = %s
                     AND cmetadata->>'type' = 'codebase'
-                    AND cmetadata->>'collection_name' = 'NEW'
+                    AND cmetadata->>'collection_name' = 'OLD'
                     LIMIT 1
                     """,
                     (str(repo_id), branch, snapshot_week_id_str) # Cast repo_id to string for JSONB query
@@ -337,7 +255,7 @@ class InsightService():
                 diff_content_for_retrieval = diff_content_for_retrieval[:MAX_RETRIEVAL_QUERY_LENGTH]
  
 
-            retriever = self.vector_store.as_retriever(search_kwargs={'k': 5,
+            retriever = self.vector_store.as_retriever(search_kwargs={'k': 3,
                                                                               'filter': {
             "$and": [
                 {"commitary_user": commitary_id},
@@ -365,7 +283,7 @@ class InsightService():
             current_app.logger.debug(f"DEBUG: Retrieved {len(retrieved_docs)} documents for context.")
 
             # Step 6: Generate insight with RAG context
-            insight_item: InsightItemDTO = rag_service.generate_insight_from_diff(
+            insight_item: InsightItemDTO = rag_service_old.generate_insight_from_diff(
                 repo_dto.github_name, branch, diff_dto, retrieved_docs
             )
             # Step 7: Save the insight into the database

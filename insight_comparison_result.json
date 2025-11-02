@@ -1,0 +1,79 @@
+{
+  "test_info": {
+    "repository": "Seongbong-Ha/dotodo_backend",
+    "repo_id": 1061647946,
+    "test_date": "2025-09-30",
+    "branch": "main",
+    "test_time": "2025-11-02T23:14:47.783641"
+  },
+  "before_optimization": {
+    "method": "고도화 전",
+    "config": {
+      "chunking": "RecursiveCharacterTextSplitter (언어 구분 없음)",
+      "chunk_size": 1000,
+      "chunk_overlap": 150,
+      "retrieval": "단순 유사도 검색",
+      "retrieval_count": 3
+    },
+    "result": {
+      "length": 1348,
+      "has_summary": true,
+      "has_details": true,
+      "has_analysis": true,
+      "insight": "**1. 변경사항 요약 (Summary of Changes)**\n\n이번 코드 변경은 주로 프로젝트의 문서화를 강화하고, 일부 기술적인 최적화를 포함합니다. `.gitignore` 파일의 정리가 이루어졌으며, `README.md` 파일에는 프로젝트의 전반적인 개요와 빠른 시작 가이드, 그리고 구조화된 프로젝트 정보를 상세히 제공하여 새로운 개발자가 쉽게 이해하고 환경을 설정할 수 있도록 했습니다. 추가적으로, API 엔드포인트에 대한 설명도 포함하여 기능 명세를 강화했습니다.\n\n**2. 주요 변경 내역 (List of Key Changes)**\n\n- `.gitignore` 파일 수정:\n  - 불필요한 주석과 항목 삭제로 개선.\n  - 주로 `*.manifest`, `*.spec`와 같은 항목의 제거와 그에 대한 주석들이 삭제됨.\n\n- `README.md` 파일 수정:\n  - 프로젝트 소개, 아키텍처 설명 추가.\n  - 빠른 시작 가이드와 프로젝트 구조 설명 추가.\n  - API 엔드포인트 명세 추가.\n  - 개발 용이성을 위한 설치 및 실행 절차가 명시됨.\n\n- `backend/README.md` 파일 확장:\n  - FastAPI 서버에 대한 구체적인 설명과 프로젝트 구조 추가.\n  - API 엔드포인트 설명과 예시 요청/응답 추가.\n\n- `backend/app/routers/todos.py` 파일 수정:\n  - 할 일 파싱 로직에서 데이터베이스 저장 후 ID를 반환하도록 수정.\n  - 데이터베이스 저장 과정 중 에러 핸들링 향상.\n\n**3. 기술적 분석 및 인사이트 (Technical Analysis and Insight)**\n\n이번 변경사항은 주로 문서화와 일부 기능 개선에 집중되어 있습니다. `.gitignore` 파일의 정리는 프로젝트 관리의 혼란을 줄이고, 중복되거나 필요 없는 항목을 제거하여 관리 효율성을 높였습니다. \n\n`README.md`와 `backend/README.md` 파일에 자세한 설명을 추가하여, 프로젝트 전반에 대한 이해도를 높였고 새로운 팀원이 쉽게 이해할 수 있도록 돕고 있습니다. 이는 협업 프로젝트에서 중요한 요소이며, 코드 이해도를 높이고 프로젝트 적응 속도를 빠르게 합니다.\n\n기술적으로, `todos.py` 파일의 저장 로직 변경은 데이터 일관성을 높이고, 에러 발생 시 응답의 유연성을 제공함으로써 사용자의 경험을 향상시킬 수 있습니다. 데이터베이스 ID를 클라이언트에게 즉시 반환함으로써 후속 처리를 가능하게 함은 응용 프로그램의 신뢰성을 증가시킵니다.\n\nOverall, 본 업데이트는 프로젝트의 유지보수성과 개발 편의성을 높이는 방향으로 설계되었으며, 이는 장기적인 관점에서 팀 전체의 생산성을 높이는 긍정적인 효과를 기대할 수 있습니다."
+    },
+    "performance": {
+      "latency_seconds": 17.4,
+      "embedding_tokens": 42457,
+      "embedding_calls": 3,
+      "llm_tokens": {
+        "total": 0,
+        "prompt": 0,
+        "completion": 0
+      }
+    }
+  },
+  "after_optimization": {
+    "method": "고도화 후",
+    "config": {
+      "chunking": "언어별 RecursiveCharacterTextSplitter",
+      "chunk_size": 1500,
+      "chunk_overlap": 200,
+      "retrieval": "파일 기반 필터링 (2-stage)",
+      "retrieval_count": "3 (changed) + 2 (other) = 5"
+    },
+    "result": {
+      "length": 1184,
+      "has_summary": true,
+      "has_details": true,
+      "has_analysis": true,
+      "insight": "**1. 변경사항 요약 (Summary of Changes)**\n이번 커밋에서는 `.gitignore` 파일 정리 및 여러 문서 파일 업데이트를 통해 프로젝트의 설정을 개선했습니다. `README.md`를 포함한 문서 전반에 걸쳐 프로젝트 개요 및 구조에 대한 설명을 강화함으로써 개발자들이 프로젝트에 대한 이해도를 높일 수 있도록 하였습니다.\n\n**2. 주요 변경 내역 (List of Key Changes)**\n- .gitignore: 파일 확장명에 대한 명확화를 위해 부정확한 항목 제거 (`*.py[codz]` → `*.py[cod]`)\n- README.md: 프로젝트 개요 및 구조에 대한 상세 설명 추가\n- backend/README.md: 백엔드 API 서버에 대한 더 상세한 설명 및 API 엔드포인트 명세 추가\n- backend/app/routers/todos.py: 데이터베이스에 할 일을 저장할 때 ID를 함께 응답에 포함하도록 로직 변경\n\n**3. 기술적 분석 및 인사이트 (Technical Analysis and Insight)**\n- **구조 개선**: `README` 파일의 상세화는 팀원 및 신규 개발자가 프로젝트의 전체 구조와 실행 방법을 빠르게 이해할 수 있게 하며, 이는 개발 속도 및 협업 효율성을 높이는 데 기여할 것입니다. 특히, FastAPI 백엔드와 관련된 정보가 명확히 기술되어 새로운 개발자가 API 구조를 이해하고 확장할 수 있도록 돕습니다.\n  \n- **성능 및 안정성**: `.gitignore` 수정으로 불필요한 파일이 버전 관리에 포함되는 일을 방지하여 깔끔한 코드베이스 유지에 기여합니다. 반면, `backend/app/routers/todos.py`의 수정 사항은 데이터베이스 저장과 관련된 안전성을 높이고 발생할 수 있는 오류를 명확히 출력하여 디버깅에 도움을 줍니다.\n\n- **잠재적 위험**: `.gitignore`에서 주석 삭제로 인해 팀 내 시각 불일치가 발생할 수 있으니, 주석 삭제의 의도가 명확히 공유될 필요가 있습니다.\n  \n- **추천 사항**: README 등의 문서 업데이트 후에는 주기적으로 내용을 리뷰하여, 프로젝트 변경 사항이 반영되고 최신 상태로 유지되도록 하는 절차를 확립하는 것이 좋습니다. 또한, `todos.py`의 예외 처리 부분은 좀 더 구체화하여 다른 오류 상황에서도 적절한 대응이 가능하도록 개선하면 좋겠습니다."
+    },
+    "performance": {
+      "latency_seconds": 16.06,
+      "embedding_tokens": 42464,
+      "embedding_calls": 3,
+      "llm_tokens": {
+        "total": 0,
+        "prompt": 0,
+        "completion": 0
+      }
+    }
+  },
+  "comparison": {
+    "length_diff": -164,
+    "length_diff_percent": -12.17,
+    "performance": {
+      "latency_diff_seconds": -1.34,
+      "latency_diff_percent": -7.68,
+      "embedding_tokens_diff": 7,
+      "embedding_tokens_diff_percent": 0.02,
+      "llm_tokens_diff": 0,
+      "llm_tokens_diff_percent": 0,
+      "cost_diff_usd": 0.0,
+      "cost_diff_percent": 0.02,
+      "cost_before_usd": 0.0042,
+      "cost_after_usd": 0.0042
+    }
+  }
+}

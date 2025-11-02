@@ -16,11 +16,9 @@ print(f"Using GitHub Token: {'*' * 10}{GITHUB_TOKEN[-4:]}" if GITHUB_TOKEN else 
 
 
 # Test constants
-#TEST_REPO_ID = 1046687705
-#TEST_USER = "HarimBaekk"
-TEST_REPO_ID = None  # 나중에 동적으로 가져올 것
-TEST_USER = "Seongbong-Ha"
-TEST_REPO_NAME = "dotodo_backend"
+#TEST_REPO_ID = 1054736566
+TEST_USER = "HarimBaekk"
+TEST_REPO_NAME = "commitary_prj"  # ✅ 추가
 
 # --- Helper Functions ---
 
@@ -51,26 +49,38 @@ def get_json_safely(response):
         print(f"FAILURE: Could not decode JSON. Error: {e}")
         print("The raw response text above was not valid JSON.")
         return None
-
-# --- Test Functions ---
-
-#25.10.29 추가
+    
+# ✅ 추가: 레포지토리 ID 찾기 함수
 def get_repo_id_by_name(username: str, repo_name: str, token: str) -> int:
-    """레포지토리 이름으로 ID 찾기"""
+    """레포지토리 이름으로 ID 찾기 (GitHub API 직접 호출)"""
     print(f"Searching for repository: {username}/{repo_name}")
     
-    params = {'user': username, 'token': token}
-    response = requests.get(f"{BASE_URL}/repos", params=params)
+    # GitHub API 직접 호출
+    headers = {
+        "Authorization": f"token {token}",
+        "Accept": "application/vnd.github.v3+json"
+    }
+    
+    # 특정 레포 정보 가져오기
+    github_url = f"https://api.github.com/repos/{username}/{repo_name}"
+    response = requests.get(github_url, headers=headers)
     
     if response.status_code == 200:
-        repos_json = response.json()
-        for repo in repos_json.get('repoList', []):
-            if repo['github_name'] == repo_name and repo['github_owner_login'] == username:
-                print(f"Found repo ID: {repo['github_id']}")
-                return repo['github_id']
-    
-    print(f"ERROR: Repository {username}/{repo_name} not found")
-    return None
+        repo_data = response.json()
+        repo_id = repo_data['id']
+        print(f"Found repo ID: {repo_id}")
+        return repo_id
+    else:
+        print(f"ERROR: Repository {username}/{repo_name} not found")
+        print(f"Status code: {response.status_code}")
+        if response.status_code == 404:
+            print("Possible reasons:")
+            print("  - Repository doesn't exist")
+            print("  - Repository is private and token doesn't have access")
+            print("  - Username or repo name is incorrect")
+        return None
+
+# --- Test Functions ---
 
 def test_get_user():
     print_test_header("test_get_user")
@@ -104,13 +114,13 @@ def test_get_branches():
 
 def test_get_diff():
     print_test_header("test_get_diff")
-    dt_from_str = "2025-10-21T10:00:00Z"
-    dt_to_str = "2025-10-21T23:59:59Z"
+    dt_from_str = "2025-08-21T10:00:00Z"
+    dt_to_str = "2025-08-24T10:00:00Z"
     query_params = {
         'token': GITHUB_TOKEN,
         'repo_id': TEST_REPO_ID,
-        'branch_from': 'main',
-        'branch_to': 'main',
+        'branch_from': 'yh_1',
+        'branch_to': 'yh_1',
         'datetime_from': dt_from_str,
         'datetime_to': dt_to_str,
         'default_branch': 'main'
@@ -127,12 +137,12 @@ def test_get_diff():
 
 def test_get_commits():
     print_test_header("test_get_commits")
-    dt_from_str = "2025-10-01T10:00:00Z"
-    dt_to_str = "2025-10-31T23:59:59Z"
+    dt_from_str = "2025-07-20T10:00:00Z"
+    dt_to_str = "2025-07-29T10:00:00Z"
     query_params = {
         'token': GITHUB_TOKEN,
         'repo_id': TEST_REPO_ID,
-        'branch_name': 'main',
+        'branch_name': 'yh_9',
         'datetime_from': dt_from_str,
         'datetime_to': dt_to_str
     }
@@ -155,12 +165,12 @@ def test_get_commits():
 
 def test_get_commits2():
     print_test_header("test_get_commits2") # Changed header for clarity
-    dt_from_str = "2025-10-01T00:00:00Z"
-    dt_to_str = "2025-10-31T23:59:59Z"
+    dt_from_str = "2025-07-20T10:00:00Z"
+    dt_to_str = "2025-07-29T10:00:00Z"
     query_params = {
         'token': GITHUB_TOKEN,
         'repo_id': TEST_REPO_ID,
-        'branch_name': 'main',
+        'branch_name': 'yh_9',
         'datetime_from': dt_from_str,
         'datetime_to': dt_to_str
     }
@@ -274,7 +284,7 @@ def test_insight_lifecycle():
 
     # 2. Create insights
     print("\n--- Step 2: Create Insights ---")
-    dates_to_create = ["2025-10-21T12:00:00Z", "2025-10-22T12:00:00Z", "2025-10-23T12:00:00Z"]
+    dates_to_create = ["2025-09-14T12:00:00Z","2025-09-15T12:00:00Z", "2025-09-16T12:00:00Z"]
     for date_str in dates_to_create:
         create_params = {
             'token': GITHUB_TOKEN,
@@ -291,8 +301,8 @@ def test_insight_lifecycle():
 
     # 3. Retrieve insights
     print("\n--- Step 3: Retrieve Insights ---")
-    start_date = "2025-10-20T00:00:00Z"
-    end_date = "2025-10-25T23:59:59Z" 
+    start_date = "2025-09-11T00:00:00Z"
+    end_date = "2025-09-17T23:59:59Z" 
     get_params = {
         'repo_id': TEST_REPO_ID,
         'commitary_id': commitary_id,
@@ -306,96 +316,6 @@ def test_insight_lifecycle():
             print("Successfully retrieved insights.")
             print("Insights data:")
             print(json.dumps(json_data, indent=2))
-
-def test_debug_insight_creation():
-    """인사이트 생성 과정 디버깅"""
-    print_test_header("test_debug_insight_creation")
-
-    # 레포 ID 찾기
-    repo_id = get_repo_id_by_name(TEST_USER, TEST_REPO_NAME, GITHUB_TOKEN)
-    if not repo_id:
-        print("Repository not found!")
-        return
-    
-    # 1. 사용자 정보 가져오기
-    print("\n--- Step 1: Get User ---")
-    user_response = requests.get(f"{BASE_URL}/user", params={'token': GITHUB_TOKEN})
-    if not check_response(user_response): return
-    user_json = get_json_safely(user_response)
-    if not user_json: return
-    commitary_id = user_json.get("commitary_id")
-    print(f"Retrieved commitary_id: {commitary_id}")
-    
-    # 2. 브랜치 목록 확인
-    print("\n--- Step 2: Get Branches ---")
-    branches_response = requests.get(f"{BASE_URL}/branches", params={
-        'token': GITHUB_TOKEN,
-        'repo_id': repo_id
-    })
-    if check_response(branches_response):
-        branches_json = get_json_safely(branches_response)
-        if branches_json:
-            print("Available branches:")
-            for branch in branches_json.get('branchList', [])[:5]:
-                print(f"  - {branch['name']}")
-    
-    # 3. 특정 기간의 커밋 확인
-    print("\n--- Step 3: Check Commits ---")
-    dt_from_str = "2025-10-21T00:00:00Z"
-    dt_to_str = "2025-10-21T23:59:59Z"
-    commits_response = requests.get(f"{BASE_URL}/githubCommits2", params={
-        'token': GITHUB_TOKEN,
-        'repo_id': repo_id,
-        'branch_name': 'main',
-        'datetime_from': dt_from_str,
-        'datetime_to': dt_to_str
-    })
-    if check_response(commits_response):
-        commits_json = get_json_safely(commits_response)
-        if commits_json:
-            commit_count = len(commits_json.get('commitList', []))
-            print(f"Found {commit_count} commits in this period")
-            if commit_count > 0:
-                print("Recent commits:")
-                for commit in commits_json['commitList'][:3]:
-                    print(f"  - {commit['sha'][:7]}: {commit['commit_msg'][:50]}")
-    
-    # 4. Diff 확인
-    print("\n--- Step 4: Check Diff ---")
-    diff_response = requests.get(f"{BASE_URL}/diff", params={
-        'token': GITHUB_TOKEN,
-        'repo_id': repo_id,
-        'branch_from': 'main',
-        'branch_to': 'main',
-        'datetime_from': dt_from_str,
-        'datetime_to': dt_to_str
-    })
-    if check_response(diff_response):
-        diff_json = get_json_safely(diff_response)
-        if diff_json:
-            file_count = len(diff_json.get('files', []))
-            print(f"Found {file_count} changed files")
-            if file_count > 0:
-                print("Changed files:")
-                for file in diff_json['files'][:5]:
-                    print(f"  - {file['filename']} ({file['status']})")
-    
-    # 5. 인사이트 생성 시도
-    print("\n--- Step 5: Try Creating Insight ---")
-    recent_date = "2025-10-21T12:00:00Z"
-    create_params = {
-        'token': GITHUB_TOKEN,
-        'repo_id': repo_id,
-        'commitary_id': commitary_id,
-        'date_from': recent_date,
-        'branch': 'main'
-    }
-    create_response = requests.post(f"{BASE_URL}/createInsight", params=create_params)
-    print(f"Create insight response: {create_response.status_code}")
-    if create_response.status_code in [200, 201, 409]:
-        response_json = get_json_safely(create_response)
-        if response_json:
-            print(f"Message: {response_json.get('message')}")
 
 def test_other_user_repository():
     """다른 사용자의 레포지토리로 테스트"""
@@ -536,7 +456,6 @@ if __name__ == "__main__":
         # test_get_diff_invalid_datetime()
         # test_repo_lifecycle()
         #test_insight_lifecycle()
-        #test_debug_insight_creation()
         test_other_user_repository()
 
         print("\nAll tests finished.")
