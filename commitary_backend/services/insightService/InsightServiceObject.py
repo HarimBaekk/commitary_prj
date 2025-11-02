@@ -326,40 +326,72 @@ class InsightService():
             
             activity_status = True
             retrieved_docs = None
-            # Step 5: Retrieve relevant documents from the vector store
-            
+            # Step 5: Retrieve relevant documents from the vector store with file-based filtering
+            #25.11.02 수정 
+            # 변경된 파일들 추출
+            changed_files = [f.filename for f in diff_dto.files if f.filename]
+            current_app.logger.debug(f"DEBUG: Changed files: {changed_files}")
+
             diff_content_for_retrieval = " ".join([f.patch for f in diff_dto.files if f.patch])            
-            MAX_RETRIEVAL_QUERY_LENGTH = 100000  # Set a safe character limit for the query
+            MAX_RETRIEVAL_QUERY_LENGTH = 100000
             if len(diff_content_for_retrieval) > MAX_RETRIEVAL_QUERY_LENGTH:
                 diff_content_for_retrieval = diff_content_for_retrieval[:MAX_RETRIEVAL_QUERY_LENGTH]
- 
 
-            retriever = self.vector_store.as_retriever(search_kwargs={'k': 5,
-                                                                              'filter': {
-            "$and": [
-                {"commitary_user": commitary_id},
-                {"repo_id": repo_id}
-            ]
-        }})
-            
+            # 1단계: 변경된 파일에서 우선 검색 (k=3)
+            retriever_primary = self.vector_store.as_retriever(
+                search_kwargs={
+                    'k': 3,
+                    'filter': {
+                        "$and": [
+                            {"commitary_user": commitary_id},
+                            {"repo_id": repo_id},
+                            {"filepath": {"$in": changed_files}}
+                        ]
+                    }
+                }
+            )
+
+            # 2단계: 다른 관련 파일에서 검색 (k=2)
+            retriever_secondary = self.vector_store.as_retriever(
+                search_kwargs={
+                    'k': 2,
+                    'filter': {
+                        "$and": [
+                            {"commitary_user": commitary_id},
+                            {"repo_id": repo_id},
+                            {"filepath": {"$nin": changed_files}}
+                        ]
+                    }
+                }
+            )
+
             try:
                 current_app.logger.debug("Attempting to retrieve documents from vector store...")
                 current_app.logger.debug(f"  - Size of content for retrieval: {len(diff_content_for_retrieval)} characters")
                 
-                # ADD THIS with BLOCK and the log line
                 with get_openai_callback() as cb:
-                    retrieved_docs = retriever.invoke(diff_content_for_retrieval)
+                    # 변경된 파일에서 검색
+                    primary_docs = retriever_primary.invoke(diff_content_for_retrieval)
+                    current_app.logger.debug(f"  - Retrieved {len(primary_docs)} documents from changed files")
+                    
+                    # 다른 파일에서 검색
+                    secondary_docs = retriever_secondary.invoke(diff_content_for_retrieval)
+                    current_app.logger.debug(f"  - Retrieved {len(secondary_docs)} documents from other files")
+                    
+                    # 결과 합치기
+                    retrieved_docs = primary_docs + secondary_docs
+                    
                     current_app.logger.debug(f"OpenAI Token Usage for Retrieval Query Embedding: {cb}")
 
-
                 current_app.logger.debug(f"Successfully retrieved {len(retrieved_docs)} documents from vector store.")
+                
+                # 검색된 문서들의 파일 경로 로깅
+                retrieved_filepaths = [doc.metadata.get('filepath', 'unknown') for doc in retrieved_docs]
+                current_app.logger.debug(f"DEBUG: Retrieved documents from files: {retrieved_filepaths}")
 
             except Exception as e:
                 current_app.logger.error("CRITICAL: Failed during vector store retrieval (retriever.invoke). This is the point of failure.", exc_info=True)
-                # Re-raise the exception or return an error status
-                # For now, let's return the error status to stop the process gracefully
-                return 2 # Status: Error
-            current_app.logger.debug(f"DEBUG: Retrieved {len(retrieved_docs)} documents for context.")
+                return 2
 
             # Step 6: Generate insight with RAG context
             insight_item: InsightItemDTO = rag_service.generate_insight_from_diff(
